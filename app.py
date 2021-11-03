@@ -23,9 +23,9 @@ class Project(db.Model):
     name = db.Column(db.String(100))
     Description = db.Column(db.String(2000))
     candidate = db.relationship(
-        'Candidate', backref='candidate_project', lazy=True)
+        'Candidate', backref='project', lazy=True)
     projectstream = db.relationship(
-        'ProjectStream', backref='projectstream_project', lazy=True)
+        'ProjectStream', backref='project', lazy=True)
 
     def __init__(self, name, Description):
         self.name = name
@@ -43,12 +43,12 @@ class Stream(db.Model):
     projectstream = db.relationship(
         'ProjectStream', backref='projectstream', lazy=True)
 
-    def __init__(self, name, description, candidate, panelmember, projectstream):
+    def __init__(self, name, description):
         self.name = name
         self.description = description
-        self.candidate = candidate
-        self.panelmember = panelmember
-        self.projectstream = projectstream
+        # self.candidate = candidate
+        # self.panelmember = panelmember
+        # self.projectstream = projectstream
 
 
 class PanelMember(db.Model):
@@ -58,7 +58,7 @@ class PanelMember(db.Model):
     email = db.Column(db.String(50))
     panelpool = db.relationship('PanelPool', backref='panelpool', lazy=True)
     round_status = db.relationship(
-        'RoundStatus', backref='round_status', lazy=True)
+        'RoundStatus', backref='roundstatus', lazy=True)
     stream_id = db.Column(db.Integer, db.ForeignKey(
         'stream.id'))
 
@@ -145,7 +145,7 @@ class RoundStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     round_num = db.Column(db.Integer)
     round_name = db.Column(db.String(20))
-    panel_id = db.column(db.Integer, db.ForeignKey('panelmember.id'))
+    panel_id = db.Column(db.Integer, db.ForeignKey('panelmember.id'))
     status = db.Column(db.String(20))
     rating = db.Column(db.Integer)
     remarks = db.Column(db.Integer)
