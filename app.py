@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
+import json
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -9,7 +10,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
 #     os.path.join(basedir, 'db.sqlite')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:pass@localHost:5432/Dummy"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:pass@localHost:5432/Dummy1"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -81,6 +82,8 @@ class Candidate(db.Model):
         'project.id'))
     stream_id = db.Column(db.Integer, db.ForeignKey(
         'stream.id'))
+    candidate_status = db.relationship(
+        'RoundStatus', backref='candidatestatus', lazy=True)
 
     def __init__(self, name, email, mobile, project_id, stream_id, entry_type):
         self.name = name
@@ -97,8 +100,6 @@ class PanelPool(db.Model):
     name = db.Column(db.String(100))
     panelmember_id = db.Column(db.Integer, db.ForeignKey(
         'panelmember.id'))
-    stream_id = db.Column(db.Integer, db.ForeignKey(
-        'stream.id'))
 
     def __init__(self, name, stream_id, panelmember_id):
         self.name = name
@@ -122,27 +123,10 @@ class ProjectStream(db.Model):
         self.required_people = required_people
 
 
-class CandidateStatus(db.Model):
-    __tablename__ = 'candidatestatus'
-    id = db.Column(db.Integer, primary_key=True)
-    candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'))
-    project_id = db.Column(db.Integer, db.ForeignKey('projectstream.id'))
-    roundstatus_id = db.Column(db.Integer, db.ForeignKey('roundstatus.id'))
-    finalstatus = db.Column(db.String(30))
-    hr_remarks = db.Column(db.String(200))
-
-    def __init__(self, id, candidate_id, project_id, roundstatus_id, finalstatus, hr_remarks):
-        self.id = id
-        self.candidate_id = candidate_id
-        self.project_id = project_id
-        self.roundstatus_id = roundstatus_id
-        self.finalstatus = finalstatus
-        self.hr_remarks = hr_remarks
-
-
 class RoundStatus(db.Model):
     __tablename__ = 'roundstatus'
     id = db.Column(db.Integer, primary_key=True)
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidate.id'))
     round_num = db.Column(db.Integer)
     round_name = db.Column(db.String(20))
     panel_id = db.Column(db.Integer, db.ForeignKey('panelmember.id'))
@@ -175,6 +159,18 @@ class PanelMemberSchema(ma.Schema):
         fields = ('id', 'name', 'email')
 
 
+class CandidateSchema(ma.Schema):
+    class Meta:
+        feilds = ('id', 'name', 'email', 'mobile',
+                  'entry_type', 'project_id', 'stream_id')
+
+
+class CandidateSchemaJoin(ma.Schema):
+    class Meta:
+        feilds = ('id', 'name', 'email', 'mobile', 'entry_type',
+                  'project_id', 'project_name', 'stream_id', 'stream_name')
+
+
 project_schema = ProjectSchema()
 projects_schema = ProjectSchema(many=True)
 
@@ -183,6 +179,12 @@ streams_schema = StreamSchema(many=True)
 
 panelmember_schema = PanelMemberSchema()
 panelmembers_schema = PanelMemberSchema(many=True)
+
+candidate_schema = CandidateSchema()
+candidates_schema = CandidateSchema(many=True)
+
+candidate_schema_join = CandidateSchemaJoin()
+candidates_schema_join = CandidateSchemaJoin(many=True)
 
 
 # Creating a project or get all projects
@@ -326,6 +328,36 @@ def delete_panelmember(id):
     db.session.delete(panelmember)
     db.session.commit()
     return panelmember_schema.jsonify(panelmember)
+
+
+# Creating a candidate or get all candidate
+@app.route('/candidate', methods=['GET', 'POST'])
+def candidate():
+    if request.method == "POST":
+        name = request.json['name']
+        email = request.json['email']
+        mobile = request.json['mobile']
+        entry_type = request.json['entry_type']
+        project_id = request.json['project_id']
+        stream_id = request.json['stream_id']
+        new_candidate = Candidate(
+            name, email, mobile, project_id, stream_id, entry_type)
+
+        db.session.add(new_candidate)
+        db.session.commit()
+        return panelmember_schema.jsonify(new_candidate)
+
+    else:
+        all_candidates = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
+                                          Stream.id, Stream.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
+        print(all_candidates)
+        keys = ['id', 'name', 'email', 'mobile', 'entry_type',
+                'project_id', 'project_name', 'stream_id', 'stream_name']
+        data = [dict(zip(keys, candidate)) for candidate in all_candidates]
+        json_data = json.dumps(data, indent=9)
+        # result = candidate_schema.dump(all_candidates)
+        # print(result)
+        return json_data
 
 
 @app.route('/', methods=['GET'])
