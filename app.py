@@ -134,8 +134,8 @@ class RoundStatus(db.Model):
     rating = db.Column(db.Integer)
     remarks = db.Column(db.Integer)
 
-    def __init__(self, id, round_num, round_name, panel_id, status, rating, remarks):
-        self.id = id
+    def __init__(self, candidate_id, round_num, round_name, panel_id, status, rating, remarks):
+        self.candidate_id = candidate_id
         self.round_num = round_num
         self.round_name = round_name
         self.panel_id = panel_id
@@ -165,10 +165,10 @@ class CandidateSchema(ma.Schema):
                   'entry_type', 'project_id', 'stream_id')
 
 
-class CandidateSchemaJoin(ma.Schema):
+class RoundStatusSchema(ma.Schema):
     class Meta:
-        feilds = ('id', 'name', 'email', 'mobile', 'entry_type',
-                  'project_id', 'project_name', 'stream_id', 'stream_name')
+        fields = ('id', 'candidate_id', 'round_num', 'round_name',
+                  'panel_id', 'status', 'rating', 'remarks')
 
 
 project_schema = ProjectSchema()
@@ -183,11 +183,13 @@ panelmembers_schema = PanelMemberSchema(many=True)
 candidate_schema = CandidateSchema()
 candidates_schema = CandidateSchema(many=True)
 
-candidate_schema_join = CandidateSchemaJoin()
-candidates_schema_join = CandidateSchemaJoin(many=True)
+roundstatus_schema = RoundStatusSchema()
+roundstatusall_schema = RoundStatusSchema(many=True)
 
 
 # Creating a project or get all projects
+
+
 @app.route('/project', methods=['GET', 'POST'])
 def projects():
     if request.method == "POST":
@@ -353,11 +355,107 @@ def candidate():
         print(all_candidates)
         keys = ['id', 'name', 'email', 'mobile', 'entry_type',
                 'project_id', 'project_name', 'stream_id', 'stream_name']
+        if all_candidates == None:
+            return "No candidates avalible in list"
         data = [dict(zip(keys, candidate)) for candidate in all_candidates]
         json_data = json.dumps(data, indent=9)
-        # result = candidate_schema.dump(all_candidates)
-        # print(result)
+        db.session.commit()
         return json_data
+
+# Get single candidate
+
+
+@app.route('/candidate/<id>', methods=['GET'])
+def get_candidate(id):
+    candidate = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
+                                 Stream.id, Stream.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Candidate.id == id).first()
+    keys = ['id', 'name', 'email', 'mobile', 'entry_type',
+            'project_id', 'project_name', 'stream_id', 'stream_name']
+    if candidate == None:
+        return "Candidate not found"
+    data = [dict(zip(keys, candidate))]
+    json_data = json.dumps(data, indent=9)
+    db.session.commit()
+    return json_data
+
+# Update candidate
+
+
+@app.route('/candidate/<id>', methods=['PUT'])
+def update_candidate(id):
+    candidate = Candidate.query.get(id)
+    name = request.json['name']
+    email = request.json['email']
+    mobile = request.json['mobile']
+    entry_type = request.json['entry_type']
+    project_id = request.json['project_id']
+    stream_id = request.json['stream_id']
+    candidate.name = name
+    candidate.email = email
+    candidate.mobile = mobile
+    candidate.entry_type = entry_type
+    candidate.project_id = project_id
+    candidate.stream_id = stream_id
+    db.session.commit()
+    return candidate_schema.jsonify(candidate)
+
+# Delete candidate
+
+
+@app.route('/candidate/<id>', methods=['DELETE'])
+def delete_candidate(id):
+    candidate = Candidate.query.get(id)
+    db.session.delete(candidate)
+    db.session.commit()
+    return candidate_schema.jsonify(candidate)
+
+# Round Status
+# Creating a round or get all round
+
+
+@app.route('/roundstatus', methods=['GET', 'POST'])
+def roundstatus():
+    if request.method == "POST":
+        candidate_id = request.json['candidate_id']
+        round_num = request.json['round_num']
+        round_name = request.json['round_name']
+        panel_id = request.json['panel_id']
+        status = request.json['status']
+        rating = request.json['rating']
+        remarks = request.json['remarks']
+        new_round = RoundStatus(candidate_id, round_num,
+                                round_name, panel_id, status, rating, remarks)
+        db.session.add(new_round)
+        db.session.commit()
+        return panelmember_schema.jsonify(new_round)
+
+    else:
+        all_rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating).outerjoin(
+            Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
+
+        keys = ['id', 'Candidate_id', 'Candidate_name', 'Round_number', 'Round_name', 'Panel_id',
+                'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating']
+        if all_rounds == None:
+            return "No rounds avalible in list"
+        data = [dict(zip(keys, round)) for round in all_rounds]
+        json_data = json.dumps(data, indent=9)
+        db.session.commit()
+        return json_data
+
+
+# Get single round
+@app.route('/roundstatus/<id>', methods=['GET'])
+def get_roundstatus(id):
+    rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating).outerjoin(
+        Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(RoundStatus.id == id).first()
+    keys = ['id', 'Candidate_id', 'Candidate_name', 'Round_number', 'Round_name', 'Panel_id',
+            'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating']
+    if rounds == None:
+        return "round not found"
+    data = [dict(zip(keys, rounds))]
+    json_data = json.dumps(data, indent=9)
+    db.session.commit()
+    return json_data
 
 
 @app.route('/', methods=['GET'])
