@@ -347,7 +347,7 @@ def candidate():
 
         db.session.add(new_candidate)
         db.session.commit()
-        return panelmember_schema.jsonify(new_candidate)
+        return candidate_schema.jsonify(new_candidate)
 
     else:
         all_candidates = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
@@ -427,7 +427,7 @@ def roundstatus():
                                 round_name, panel_id, status, rating, remarks)
         db.session.add(new_round)
         db.session.commit()
-        return panelmember_schema.jsonify(new_round)
+        return roundstatus_schema.jsonify(new_round)
 
     else:
         all_rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating).outerjoin(
@@ -456,6 +456,40 @@ def get_roundstatus(id):
     json_data = json.dumps(data, indent=9)
     db.session.commit()
     return json_data
+
+# Update round
+
+
+@app.route('/roundstatus/<id>', methods=['PUT'])
+def update_roundstatus(id):
+    round = RoundStatus.query.get(id)
+    candidate_id = request.json['candidate_id']
+    round_num = request.json['round_num']
+    round_name = request.json['round_name']
+    panel_id = request.json['panel_id']
+    status = request.json['status']
+    rating = request.json['rating']
+    remarks = request.json['remarks']
+
+    round.candidate_id = candidate_id
+    round.round_num = round_num
+    round.round_name = round_name
+    round.panel_id = panel_id
+    round.status = status
+    round.rating = rating
+    round.remarks = remarks
+    db.session.commit()
+    return roundstatus_schema.jsonify(round)
+
+# Delete Rounds
+
+
+@app.route('/roundstatus/<id>', methods=['DELETE'])
+def delete_rounds(id):
+    round = RoundStatus.query.get(id)
+    db.session.delete(round)
+    db.session.commit()
+    return roundstatus_schema.jsonify(candidate)
 
 
 @app.route('/', methods=['GET'])
