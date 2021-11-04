@@ -132,7 +132,7 @@ class RoundStatus(db.Model):
     panel_id = db.Column(db.Integer, db.ForeignKey('panelmember.id'))
     status = db.Column(db.String(20))
     rating = db.Column(db.Integer)
-    remarks = db.Column(db.Integer)
+    remarks = db.Column(db.String(2000))
 
     def __init__(self, candidate_id, round_num, round_name, panel_id, status, rating, remarks):
         self.candidate_id = candidate_id
@@ -430,11 +430,11 @@ def roundstatus():
         return roundstatus_schema.jsonify(new_round)
 
     else:
-        all_rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating).outerjoin(
+        all_rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
             Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
 
         keys = ['id', 'Candidate_id', 'Candidate_name', 'Round_number', 'Round_name', 'Panel_id',
-                'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating']
+                'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
         if all_rounds == None:
             return "No rounds avalible in list"
         data = [dict(zip(keys, round)) for round in all_rounds]
@@ -446,10 +446,10 @@ def roundstatus():
 # Get single round
 @app.route('/roundstatus/<id>', methods=['GET'])
 def get_roundstatus(id):
-    rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating).outerjoin(
+    rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(RoundStatus.id == id).first()
     keys = ['id', 'Candidate_id', 'Candidate_name', 'Round_number', 'Round_name', 'Panel_id',
-            'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating']
+            'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
     if rounds == None:
         return "round not found"
     data = [dict(zip(keys, rounds))]
