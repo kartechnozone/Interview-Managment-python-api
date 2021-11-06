@@ -1,3 +1,4 @@
+from re import S
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -63,12 +64,10 @@ class PanelMember(db.Model):
     stream_id = db.Column(db.Integer, db.ForeignKey(
         'stream.id'))
 
-    def __init__(self, name, email, stream_id, panelpool, round_status):
+    def __init__(self, name, email, stream_id):
         self.name = name
         self.email = email
         self.stream_id = stream_id
-        self.panelpool = panelpool
-        self.round_status = round_status
 
 
 class Candidate(db.Model):
@@ -291,7 +290,8 @@ def panelmembers():
     if request.method == "POST":
         name = request.json['name']
         email = request.json['email']
-        new_panelmember = PanelMember(name, email)
+        stream_id = request.json['stream_id']
+        new_panelmember = PanelMember(name, email, stream_id)
 
         db.session.add(new_panelmember)
         db.session.commit()
@@ -413,6 +413,8 @@ def delete_candidate(id):
 # Creating a round or get all round
 
 
+@app.route('/project/status', methods=['GET'])
+@app.route('/candidate/status', methods=['GET'])
 @app.route('/roundstatus', methods=['GET', 'POST'])
 def roundstatus():
     if request.method == "POST":
@@ -492,9 +494,151 @@ def delete_rounds(id):
     return roundstatus_schema.jsonify(candidate)
 
 
+# Extra Api endpoints
+# Get single candidate status
+@app.route('/candidate/<id>/status', methods=['GET'])
+def get_candidatestatus(id):
+    candidate_status = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
+        Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Candidate.id == id).all()
+    keys = ['id', 'Candidate_id', 'Candidate_name', 'Round_number', 'Round_name', 'Panel_id',
+            'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
+    if candidate_status == None:
+        return "No Interview Found"
+    data = [dict(zip(keys, candidate_status)) for status in candidate_status]
+    json_data = json.dumps(data, indent=9)
+    db.session.commit()
+    return json_data
+
+# get panel member status
+
+
+@app.route('/panelmember/status', methods=['GET'])
+def get_panels_status():
+    panel_status = db.session.query(RoundStatus.id, PanelMember.id, PanelMember.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
+        Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
+    keys = ['id', 'Panel_member_id', 'Panel_member_name', 'Round_number', 'Round_name', 'Candidate_id',
+            'Candidate_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
+    if panel_status == None:
+        return "round not found"
+    data = [dict(zip(keys, status)) for status in panel_status]
+    json_data = json.dumps(data, indent=9)
+    db.session.commit()
+    return json_data
+
+# Get single panel status
+
+
+@app.route('/panelmember/<id>/status', methods=['GET'])
+def get_panel_status(id):
+    panel_status = db.session.query(RoundStatus.id, PanelMember.id, PanelMember.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
+        Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(PanelMember.id == id).all()
+    keys = ['id', 'Panel_member_id', 'Panel_member_name', 'Round_number', 'Round_name', 'Candidate_id',
+            'Candidate_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
+    if panel_status == None:
+        return "No Interview Found"
+    data = [dict(zip(keys, status)) for status in panel_status]
+    json_data = json.dumps(data, indent=9)
+    db.session.commit()
+    return json_data
+
+# Get project status
+
+
+@app.route('/project/<id>/status', methods=['GET'])
+def get_project_status(id):
+    project_status = db.session.query(RoundStatus.id, Project.id, Project.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, PanelMember.id, PanelMember.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
+        Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Project.id == id).all()
+    keys = ['id', 'project_id', 'project_name', 'Round_number', 'Round_name', 'Candidate_id',
+            'Candidate_name', 'Panel_member_id', 'Panel_member_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
+    if project_status == None:
+        return "No Interview Found"
+    data = [dict(zip(keys, status)) for status in project_status]
+    json_data = json.dumps(data)
+    db.session.commit()
+    return json_data
+
+# Get project Candidates
+
+
+@app.route('/project/<id>/candidate', methods=['GET'])
+def get_project_candidate(id):
+    project_candidate = db.session.query(Candidate.id, Candidate.name, Project.id, Project.name).outerjoin(
+        Project, Candidate.project_id == Project.id).filter(Project.id == id).all()
+    keys = ['id', 'Candidate_name', 'project_id', 'project_name']
+    if project_candidate == None:
+        return "No Candidate Found"
+    data = [dict(zip(keys, status)) for status in project_candidate]
+    json_data = json.dumps(data)
+    db.session.commit()
+    return json_data
+
+
+# Get project Panel Members
+@app.route('/project/panalmember', methods=['GET'])
+def get_project_panels():
+    project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, PanelMember.id, PanelMember.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
+        PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).all()
+    keys = ['round_id', 'round_name', 'project_id', 'project_name',
+            'Panel_member_id', 'Panel_member_name']
+    if project_panels == None:
+        return "No PanelMembers Found"
+    data = [dict(zip(keys, status)) for status in project_panels]
+    json_data = json.dumps(data)
+    db.session.commit()
+    return json_data
+
+# Get single project Panel Members
+
+
+@app.route('/project/<id>/panalmember', methods=['GET'])
+def get_project_panel(id):
+    project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, PanelMember.id, PanelMember.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
+        PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).filter(Project.id == id).all()
+    keys = ['round_id', 'round_name', 'project_id', 'project_name',
+            'Panel_member_id', 'Panel_member_name']
+    if project_panels == None:
+        return "No PanelMembers Found"
+    data = [dict(zip(keys, status)) for status in project_panels]
+    json_data = json.dumps(data)
+    db.session.commit()
+    return json_data
+
+# Get  project streams
+
+
+@app.route('/project/stream', methods=['GET'])
+def get_project_streams():
+    project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, Stream.id, Stream.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
+        Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
+    keys = ['round_id', 'round_name', 'project_id', 'project_name',
+            'Stream_id', 'Stream_name']
+    if project_panels == None:
+        return "No Streams Found"
+    data = [dict(zip(keys, status)) for status in project_panels]
+    json_data = json.dumps(data)
+    db.session.commit()
+    return json_data
+
+# Get  single project streams
+
+
+@app.route('/project/<id>/stream', methods=['GET'])
+def get_project_stream(id):
+    project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, Stream.id, Stream.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
+        Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Project.id == id).all()
+    keys = ['round_id', 'round_name', 'project_id', 'project_name',
+            'Stream_id', 'Stream_name']
+    if project_panels == None:
+        return "No Streams Found"
+    data = [dict(zip(keys, status)) for status in project_panels]
+    json_data = json.dumps(data, indent=4, separators=(',', ': '))
+    db.session.commit()
+    return json_data
+
+
 @app.route('/', methods=['GET'])
 def get():
-    return jsonify({'msg': 'Hello World'})
+    return jsonify({'msg': 'Interview Managment'})
 
 
 if __name__ == '__main__':
