@@ -145,7 +145,7 @@ class RoundStatus(db.Model):
 
 class ProjectSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'name', 'description')
+        fields = ('id', 'name', 'Description')
 
 
 class StreamSchema(ma.Schema):
@@ -189,12 +189,12 @@ roundstatusall_schema = RoundStatusSchema(many=True)
 # Creating a project or get all projects
 
 
-@app.route('/project', methods=['GET', 'POST'])
+@app.route('/api/project', methods=['GET', 'POST'])
 def projects():
     if request.method == "POST":
         name = request.json['name']
-        description = request.json['description']
-        new_project = Project(name, description)
+        Description = request.json['Description']
+        new_project = Project(name, Description)
 
         db.session.add(new_project)
         db.session.commit()
@@ -207,7 +207,7 @@ def projects():
 
 
 # Get single project
-@app.route('/project/<id>', methods=['GET'])
+@app.route('/api/project/<id>', methods=['GET'])
 def get_project(id):
     project = Project.query.get(id)
     return project_schema.jsonify(project)
@@ -215,7 +215,7 @@ def get_project(id):
 # Update project
 
 
-@app.route('/project/<id>', methods=['PUT'])
+@app.route('/api/project/<id>', methods=['PUT'])
 def update_project(id):
     project = Project.query.get(id)
     name = request.json['name']
@@ -228,7 +228,7 @@ def update_project(id):
 # Delete Project
 
 
-@app.route('/project/<id>', methods=['DELETE'])
+@app.route('/api/project/<id>', methods=['DELETE'])
 def delete_project(id):
     project = Project.query.get(id)
     db.session.delete(project)
@@ -237,7 +237,7 @@ def delete_project(id):
 
 
 # Creating a project or get all streams
-@app.route('/stream', methods=['GET', 'POST'])
+@app.route('/api/stream', methods=['GET', 'POST'])
 def streams():
     if request.method == "POST":
         name = request.json['name']
@@ -255,7 +255,7 @@ def streams():
 
 
 # Get single stream
-@app.route('/stream/<id>', methods=['GET'])
+@app.route('/api/stream/<id>', methods=['GET'])
 def get_stream(id):
     stream = Stream.query.get(id)
     return stream_schema.jsonify(stream)
@@ -263,7 +263,7 @@ def get_stream(id):
 # Update stream
 
 
-@app.route('/stream/<id>', methods=['PUT'])
+@app.route('/api/stream/<id>', methods=['PUT'])
 def update_stream(id):
     stream = Stream.query.get(id)
     name = request.json['name']
@@ -276,7 +276,7 @@ def update_stream(id):
 # Delete stream
 
 
-@app.route('/stream/<id>', methods=['DELETE'])
+@app.route('/api/stream/<id>', methods=['DELETE'])
 def delete_stream(id):
     stream = Stream.query.get(id)
     db.session.delete(stream)
@@ -285,7 +285,7 @@ def delete_stream(id):
 
 
 # Creating a panelmember or get all panelmembers
-@app.route('/panelmember', methods=['GET', 'POST'])
+@app.route('/api/panelmember', methods=['GET', 'POST'])
 def panelmembers():
     if request.method == "POST":
         name = request.json['name']
@@ -304,14 +304,14 @@ def panelmembers():
 
 
 # Get single panelmember
-@app.route('/panelmember/<id>', methods=['GET'])
+@app.route('/api/panelmember/<id>', methods=['GET'])
 def get_panelmember(id):
     panelmember = PanelMember.query.get(id)
     return panelmember_schema.jsonify(panelmember)
 
 
 # Update panelmember
-@app.route('/panelmember/<id>', methods=['PUT'])
+@app.route('/api/panelmember/<id>', methods=['PUT'])
 def update_panelmember(id):
     panelmember = PanelMember.query.get(id)
     name = request.json['name']
@@ -324,7 +324,7 @@ def update_panelmember(id):
 # Delete panelmember
 
 
-@app.route('/panelmember/<id>', methods=['DELETE'])
+@app.route('/api/panelmember/<id>', methods=['DELETE'])
 def delete_panelmember(id):
     panelmember = PanelMember.query.get(id)
     db.session.delete(panelmember)
@@ -333,7 +333,7 @@ def delete_panelmember(id):
 
 
 # Creating a candidate or get all candidate
-@app.route('/candidate', methods=['GET', 'POST'])
+@app.route('/api/candidate', methods=['GET', 'POST'])
 def candidate():
     if request.method == "POST":
         name = request.json['name']
@@ -365,7 +365,7 @@ def candidate():
 # Get single candidate
 
 
-@app.route('/candidate/<id>', methods=['GET'])
+@app.route('/api/candidate/<id>', methods=['GET'])
 def get_candidate(id):
     candidate = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
                                  Stream.id, Stream.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Candidate.id == id).first()
@@ -373,7 +373,7 @@ def get_candidate(id):
             'project_id', 'project_name', 'stream_id', 'stream_name']
     if candidate == None:
         return "Candidate not found"
-    data = [dict(zip(keys, candidate))]
+    data = dict(zip(keys, candidate))
     json_data = json.dumps(data, indent=9)
     db.session.commit()
     return json_data
@@ -381,7 +381,7 @@ def get_candidate(id):
 # Update candidate
 
 
-@app.route('/candidate/<id>', methods=['PUT'])
+@app.route('/api/candidate/<id>', methods=['PUT'])
 def update_candidate(id):
     candidate = Candidate.query.get(id)
     name = request.json['name']
@@ -402,7 +402,7 @@ def update_candidate(id):
 # Delete candidate
 
 
-@app.route('/candidate/<id>', methods=['DELETE'])
+@app.route('/api/candidate/<id>', methods=['DELETE'])
 def delete_candidate(id):
     candidate = Candidate.query.get(id)
     db.session.delete(candidate)
@@ -413,9 +413,9 @@ def delete_candidate(id):
 # Creating a round or get all round
 
 
-@app.route('/project/status', methods=['GET'])
-@app.route('/candidate/status', methods=['GET'])
-@app.route('/roundstatus', methods=['GET', 'POST'])
+@app.route('/api/project/status', methods=['GET'])
+@app.route('/api/candidate/status', methods=['GET'])
+@app.route('/api/roundstatus', methods=['GET', 'POST'])
 def roundstatus():
     if request.method == "POST":
         candidate_id = request.json['candidate_id']
@@ -446,7 +446,7 @@ def roundstatus():
 
 
 # Get single round
-@app.route('/roundstatus/<id>', methods=['GET'])
+@app.route('/api/roundstatus/<id>', methods=['GET'])
 def get_roundstatus(id):
     rounds = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(RoundStatus.id == id).first()
@@ -462,7 +462,7 @@ def get_roundstatus(id):
 # Update round
 
 
-@app.route('/roundstatus/<id>', methods=['PUT'])
+@app.route('/api/roundstatus/<id>', methods=['PUT'])
 def update_roundstatus(id):
     round = RoundStatus.query.get(id)
     candidate_id = request.json['candidate_id']
@@ -486,7 +486,7 @@ def update_roundstatus(id):
 # Delete Rounds
 
 
-@app.route('/roundstatus/<id>', methods=['DELETE'])
+@app.route('/api/roundstatus/<id>', methods=['DELETE'])
 def delete_rounds(id):
     round = RoundStatus.query.get(id)
     db.session.delete(round)
@@ -496,7 +496,7 @@ def delete_rounds(id):
 
 # Extra Api endpoints
 # Get single candidate status
-@app.route('/candidate/<id>/status', methods=['GET'])
+@app.route('/api/candidate/<id>/status', methods=['GET'])
 def get_candidatestatus(id):
     candidate_status = db.session.query(RoundStatus.id, Candidate.id, Candidate.name, RoundStatus.round_num, RoundStatus.round_name, PanelMember.id, PanelMember.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Candidate.id == id).all()
@@ -504,7 +504,7 @@ def get_candidatestatus(id):
             'Panel_member_name', 'project_id', 'project_name', 'stream_id', 'stream_name', 'status', 'rating', 'remarks']
     if candidate_status == None:
         return "No Interview Found"
-    data = [dict(zip(keys, candidate_status)) for status in candidate_status]
+    data = [dict(zip(keys, status)) for status in candidate_status]
     json_data = json.dumps(data, indent=9)
     db.session.commit()
     return json_data
@@ -512,7 +512,7 @@ def get_candidatestatus(id):
 # get panel member status
 
 
-@app.route('/panelmember/status', methods=['GET'])
+@app.route('/api/panelmember/status', methods=['GET'])
 def get_panels_status():
     panel_status = db.session.query(RoundStatus.id, PanelMember.id, PanelMember.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
@@ -528,7 +528,7 @@ def get_panels_status():
 # Get single panel status
 
 
-@app.route('/panelmember/<id>/status', methods=['GET'])
+@app.route('/api/panelmember/<id>/status', methods=['GET'])
 def get_panel_status(id):
     panel_status = db.session.query(RoundStatus.id, PanelMember.id, PanelMember.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, Project.id, Project.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(PanelMember.id == id).all()
@@ -544,7 +544,7 @@ def get_panel_status(id):
 # Get project status
 
 
-@app.route('/project/<id>/status', methods=['GET'])
+@app.route('/api/project/<id>/status', methods=['GET'])
 def get_project_status(id):
     project_status = db.session.query(RoundStatus.id, Project.id, Project.name, RoundStatus.round_num, RoundStatus.round_name, Candidate.id, Candidate.name, PanelMember.id, PanelMember.name, Stream.id, Stream.name, RoundStatus.status, RoundStatus.rating, RoundStatus.remarks).outerjoin(
         Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Project.id == id).all()
@@ -560,11 +560,12 @@ def get_project_status(id):
 # Get project Candidates
 
 
-@app.route('/project/<id>/candidate', methods=['GET'])
+@app.route('/api/project/<id>/candidate', methods=['GET'])
 def get_project_candidate(id):
-    project_candidate = db.session.query(Candidate.id, Candidate.name, Project.id, Project.name).outerjoin(
+    project_candidate = db.session.query(Candidate.id, Candidate.name, Candidate.entry_type, Project.id, Project.name).outerjoin(
         Project, Candidate.project_id == Project.id).filter(Project.id == id).all()
-    keys = ['id', 'Candidate_name', 'project_id', 'project_name']
+    keys = ['Candidate_id', 'Candidate_name',
+            'entry_type', 'project_id', 'project_name']
     if project_candidate == None:
         return "No Candidate Found"
     data = [dict(zip(keys, status)) for status in project_candidate]
@@ -574,7 +575,7 @@ def get_project_candidate(id):
 
 
 # Get project Panel Members
-@app.route('/project/panalmember', methods=['GET'])
+@app.route('/api/project/panalmember', methods=['GET'])
 def get_project_panels():
     project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, PanelMember.id, PanelMember.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
         PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).all()
@@ -590,7 +591,7 @@ def get_project_panels():
 # Get single project Panel Members
 
 
-@app.route('/project/<id>/panalmember', methods=['GET'])
+@app.route('/api/project/<id>/panalmember', methods=['GET'])
 def get_project_panel(id):
     project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, PanelMember.id, PanelMember.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
         PanelMember, RoundStatus.panel_id == PanelMember.id).outerjoin(Project, Candidate.project_id == Project.id).filter(Project.id == id).all()
@@ -606,7 +607,7 @@ def get_project_panel(id):
 # Get  project streams
 
 
-@app.route('/project/stream', methods=['GET'])
+@app.route('/api/project/stream', methods=['GET'])
 def get_project_streams():
     project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, Stream.id, Stream.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
         Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
@@ -622,7 +623,7 @@ def get_project_streams():
 # Get  single project streams
 
 
-@app.route('/project/<id>/stream', methods=['GET'])
+@app.route('/api/project/<id>/stream', methods=['GET'])
 def get_project_stream(id):
     project_panels = db.session.query(RoundStatus.id, RoundStatus.round_name, Project.id, Project.name, Stream.id, Stream.name).outerjoin(Candidate, RoundStatus.candidate_id == Candidate.id).outerjoin(
         Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Project.id == id).all()
