@@ -11,7 +11,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
 #     os.path.join(basedir, 'db.sqlite')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:pass@localHost:5432/Dummy1"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:pass@localHost:5432/Dummy2"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -75,22 +75,24 @@ class Candidate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     email = db.Column(db.String(50))
-    mobile = db.Column(db.Integer)
+    mobile = db.Column(db.BigInteger)
     entry_type = db.Column(db.String(50))
     project_id = db.Column(db.Integer, db.ForeignKey(
         'project.id'))
     stream_id = db.Column(db.Integer, db.ForeignKey(
         'stream.id'))
+    status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
     candidate_status = db.relationship(
         'RoundStatus', backref='candidatestatus', lazy=True)
 
-    def __init__(self, name, email, mobile, project_id, stream_id, entry_type):
+    def __init__(self, name, email, mobile, project_id, stream_id, entry_type, status_id):
         self.name = name
         self.email = email
         self.mobile = mobile
         self.project_id = project_id
         self.stream_id = stream_id
         self.entry_type = entry_type
+        self.status_id = status_id
 
 
 class PanelPool(db.Model):
@@ -143,6 +145,15 @@ class RoundStatus(db.Model):
         self.remarks = remarks
 
 
+class Status(db.Model):
+    __tablename__ = 'status'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(30))
+
+    def __init__(self, name) -> None:
+        self.name = name
+
+
 class ProjectSchema(ma.Schema):
     class Meta:
         fields = ('id', 'name', 'Description')
@@ -155,7 +166,12 @@ class StreamSchema(ma.Schema):
 
 class PanelMemberSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'name', 'email')
+        fields = ('id', 'name', 'email', 'stream_id')
+
+
+class PanelMemberStreamSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'name', 'email', 'stream_id', 'stream_name')
 
 
 class CandidateSchema(ma.Schema):
@@ -178,6 +194,10 @@ streams_schema = StreamSchema(many=True)
 
 panelmember_schema = PanelMemberSchema()
 panelmembers_schema = PanelMemberSchema(many=True)
+
+panelmember_stream_schema = PanelMemberStreamSchema()
+panelmembers_stream_schema = PanelMemberStreamSchema(many=True)
+
 
 candidate_schema = CandidateSchema()
 candidates_schema = CandidateSchema(many=True)
@@ -298,16 +318,29 @@ def panelmembers():
         return panelmember_schema.jsonify(new_panelmember)
 
     else:
-        all_streams = PanelMember.query.all()
-        result = panelmembers_schema.dump(all_streams)
-        return jsonify(result)
+        all_panels = db.session.query(PanelMember.id, PanelMember.name, PanelMember.email, Stream.id, Stream.name).outerjoin(
+            Stream, PanelMember.stream_id == Stream.id).all()
+        keys = ['id', 'name', 'email', 'stream_id', 'stream_name']
+        if all_panels == None:
+            return "No panels avalible in list"
+        data = [dict(zip(keys, panel)) for panel in all_panels]
+        json_data = json.dumps(data, indent=2)
+        db.session.commit()
+        return json_data
 
 
 # Get single panelmember
 @app.route('/api/panelmember/<id>', methods=['GET'])
 def get_panelmember(id):
-    panelmember = PanelMember.query.get(id)
-    return panelmember_schema.jsonify(panelmember)
+    all_panel = db.session.query(PanelMember.id, PanelMember.name, PanelMember.email, Stream.id, Stream.name).outerjoin(
+        Stream, PanelMember.stream_id == Stream.id).filter(PanelMember.id == id).first()
+    keys = ['id', 'name', 'email', 'stream_id', 'stream_name']
+    if all_panel == None:
+        return "No panels avalible in list"
+    data = dict(zip(keys, all_panel))
+    json_data = json.dumps(data, indent=2)
+    db.session.commit()
+    return json_data
 
 
 # Update panelmember
@@ -342,8 +375,9 @@ def candidate():
         entry_type = request.json['entry_type']
         project_id = request.json['project_id']
         stream_id = request.json['stream_id']
+        status_id = request.json['status_id']
         new_candidate = Candidate(
-            name, email, mobile, project_id, stream_id, entry_type)
+            name, email, mobile, project_id, stream_id, entry_type, status_id)
 
         db.session.add(new_candidate)
         db.session.commit()
@@ -351,10 +385,10 @@ def candidate():
 
     else:
         all_candidates = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
-                                          Stream.id, Stream.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).all()
+                                          Stream.id, Stream.name, Status.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).outerjoin(Status, Candidate.status_id == Status.id).all()
         print(all_candidates)
         keys = ['id', 'name', 'email', 'mobile', 'entry_type',
-                'project_id', 'project_name', 'stream_id', 'stream_name']
+                'project_id', 'project_name', 'stream_id', 'stream_name', 'status_name']
         if all_candidates == None:
             return "No candidates avalible in list"
         data = [dict(zip(keys, candidate)) for candidate in all_candidates]
@@ -368,9 +402,9 @@ def candidate():
 @app.route('/api/candidate/<id>', methods=['GET'])
 def get_candidate(id):
     candidate = db.session.query(Candidate.id, Candidate.name, Candidate.email, Candidate.mobile, Candidate.entry_type, Project.id, Project.name,
-                                 Stream.id, Stream.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).filter(Candidate.id == id).first()
+                                 Stream.id, Stream.name, Status.name).outerjoin(Project, Candidate.project_id == Project.id).outerjoin(Stream, Candidate.stream_id == Stream.id).outerjoin(Status, Candidate.status_id == Status.id).filter(Candidate.id == id).first()
     keys = ['id', 'name', 'email', 'mobile', 'entry_type',
-            'project_id', 'project_name', 'stream_id', 'stream_name']
+            'project_id', 'project_name', 'stream_id', 'stream_name', 'status_name']
     if candidate == None:
         return "Candidate not found"
     data = dict(zip(keys, candidate))
@@ -390,12 +424,14 @@ def update_candidate(id):
     entry_type = request.json['entry_type']
     project_id = request.json['project_id']
     stream_id = request.json['stream_id']
+    status_id = request.json['status_id']
     candidate.name = name
     candidate.email = email
     candidate.mobile = mobile
     candidate.entry_type = entry_type
     candidate.project_id = project_id
     candidate.stream_id = stream_id
+    candidate.status_id = status_id
     db.session.commit()
     return candidate_schema.jsonify(candidate)
 
@@ -562,10 +598,11 @@ def get_project_status(id):
 
 @app.route('/api/project/<id>/candidate', methods=['GET'])
 def get_project_candidate(id):
-    project_candidate = db.session.query(Candidate.id, Candidate.name, Candidate.entry_type, Project.id, Project.name).outerjoin(
-        Project, Candidate.project_id == Project.id).filter(Project.id == id).all()
+    project_candidate = db.session.query(Candidate.id, Candidate.name, Candidate.entry_type, Project.id, Project.name, Status.name).outerjoin(
+        Project, Candidate.project_id == Project.id).outerjoin(
+        Status, Candidate.status_id == Status.id).filter(Project.id == id).all()
     keys = ['Candidate_id', 'Candidate_name',
-            'entry_type', 'project_id', 'project_name']
+            'entry_type', 'project_id', 'project_name', 'status_name']
     if project_candidate == None:
         return "No Candidate Found"
     data = [dict(zip(keys, status)) for status in project_candidate]
